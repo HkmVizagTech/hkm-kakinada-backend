@@ -21,32 +21,32 @@ const razorpay = new Razorpay({
 const CandidateController = {
   
   createOrder: async (req, res) => {
-    console.log("✅ /users/create-order route hit");
-    console.log("📦 Request body:", JSON.stringify(req.body, null, 2));
+    console.log("/users/create-order route hit");
+    console.log(" Request body:", JSON.stringify(req.body, null, 2));
     
     const { amount, formData } = req.body;  
     
     if (!amount) {
-      console.log("❌ Missing amount");
+      console.log(" Missing amount");
       return res.status(400).json({ status: "error", message: "Amount is required" });
     }
     
     if (!formData) {
-      console.log("❌ Missing formData");
+      console.log(" Missing formData");
       return res.status(400).json({ status: "error", message: "Form data is required" });
     }
     
-    console.log("✅ Amount:", amount, "FormData keys:", Object.keys(formData));
+    console.log(" Amount:", amount, "FormData keys:", Object.keys(formData));
     
     const receipt = `receipt_${Date.now()}`;
     const options = { amount, currency: "INR", receipt };
     try {
-      console.log("🏦 Creating Razorpay order with options:", options);
+      console.log(" Creating Razorpay order with options:", options);
       const order = await razorpay.orders.create(options);
-      console.log("✅ Razorpay order created:", order.id);
+      console.log(" Razorpay order created:", order.id);
       
       const normalizedNumber = "91" + formData.whatsappNumber;
-      console.log("📱 Normalized number:", normalizedNumber);
+      console.log(" Normalized number:", normalizedNumber);
       
       const candidate = new Candidate({
         serialNo: formData.serialNo,
@@ -67,21 +67,21 @@ const CandidateController = {
         email: formData.email,
       });
       
-      console.log("💾 Saving candidate to database...");
+      console.log(" Saving candidate to database...");
       await candidate.save();
-      console.log("✅ Candidate saved successfully with ID:", candidate._id);
+      console.log("Candidate saved successfully with ID:", candidate._id);
       
       return res.json(order);
     } catch (err) {
-      console.error("❌ Error creating order and saving candidate:", err);
-      console.error("❌ Error stack:", err.stack);
+      console.error(" Error creating order and saving candidate:", err);
+      console.error(" Error stack:", err.stack);
       return res.status(500).json({ status: "error", message: err.message });
     }
   },
 
   verifyPayment: async (req, res) => {
-    console.log("✅ /users/verify-payment route hit");
-    console.log("📦 Request body:", JSON.stringify(req.body, null, 2));
+    console.log(" /users/verify-payment route hit");
+    console.log(" Request body:", JSON.stringify(req.body, null, 2));
     
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
     
@@ -92,21 +92,21 @@ const CandidateController = {
     const generated_signature = hmac.digest("hex");
 
     if (generated_signature !== razorpay_signature) {
-      console.log("❌ Signature verification failed");
+      console.log(" Signature verification failed");
       return res.status(400).json({ status: "fail", message: "Payment verification failed" });
     }
 
-    console.log("✅ Signature verified successfully");
+    console.log(" Signature verified successfully");
 
     try {
       const candidate = await Candidate.findOne({ orderId: razorpay_order_id });
 
       if (!candidate) {
-        console.log("❌ No candidate found with orderId:", razorpay_order_id);
+        console.log(" No candidate found with orderId:", razorpay_order_id);
         return res.status(404).json({ status: "fail", message: "Candidate not found" });
       }
 
-      console.log("✅ Candidate found:", candidate.name, "ID:", candidate._id);
+      console.log(" Candidate found:", candidate.name, "ID:", candidate._id);
 
       if (candidate.paymentStatus === "Paid") {
         return res.json({ message: "Already Registered", candidate });
@@ -359,7 +359,7 @@ markAttendance: async (req, res) => {
 
     console.log("🔍 Looking for candidate with normalized number:", normalizedNumber);
 
-    // First, find all candidates with this number
+
     const allCandidates = await Candidate.find({ whatsappNumber: normalizedNumber }).sort({ createdAt: -1 });
     console.log(`📊 Found ${allCandidates.length} total registrations for this number`);
     
@@ -369,43 +369,43 @@ markAttendance: async (req, res) => {
       });
     }
 
-    // Find the candidate with "Paid" status (latest one if multiple)
+ 
     let candidate = await Candidate.findOne(
       { whatsappNumber: normalizedNumber, paymentStatus: "Paid" }
     ).sort({ createdAt: -1 });
 
     if (!candidate) {
-      console.log("❌ No candidate found with Paid status");
+      console.log(" No candidate found with Paid status");
       
-      // Check if any candidate exists with this number
+      
       const latestCandidate = await Candidate.findOne({ whatsappNumber: normalizedNumber }).sort({ createdAt: -1 });
       if (latestCandidate) {
-        console.log(`⚠️ Found candidate ${latestCandidate.name} but payment status is: ${latestCandidate.paymentStatus}`);
+        console.log(` Found candidate ${latestCandidate.name} but payment status is: ${latestCandidate.paymentStatus}`);
         return res.status(403).json({ message: "Payment not completed. Attendance cannot be marked." });
       } else {
-        console.log("❌ No candidate found with this number at all");
+        console.log(" No candidate found with this number at all");
         return res.status(404).json({ message: "Number not registered! Please register here: https://youthfest.harekrishnavizag.org/ And please visit the enquiry counter." });
       }
     }
 
-    console.log(`✅ Found paid candidate: ${candidate.name} (${candidate.paymentStatus})`);
-    console.log(`🎫 Attendance already marked: ${candidate.attendance === true}`);
+    console.log(` Found paid candidate: ${candidate.name} (${candidate.paymentStatus})`);
+    console.log(` Attendance already marked: ${candidate.attendance === true}`);
     
 
-    // Generate attendance token if not exists
+
     if (!candidate.attendanceToken) {
       candidate.attendanceToken = candidate._id.toString();
       console.log("🎫 Generated new attendance token");
     }
 
-    // Mark attendance if not already marked
+
     if (candidate.attendance !== true) {
       candidate.attendance = true;
       candidate.attendanceDate = new Date();
       await candidate.save();
-      console.log("✅ Attendance marked successfully");
+      console.log(" Attendance marked successfully");
     } else {
-      console.log("ℹ️ Attendance was already marked");
+      console.log("ℹ Attendance was already marked");
     }
 
     const details = {
@@ -437,26 +437,26 @@ markAttendance: async (req, res) => {
 adminAttendanceScan: async (req, res) => {
   try {
     const { token } = req.body;
-    console.log("🔍 Admin scanning QR token:", token);
+    console.log(" Admin scanning QR token:", token);
     
     const candidate = await Candidate.findOne({ attendanceToken: token });
     
     if (!candidate) {
-      console.log("❌ No candidate found with attendance token:", token);
+      console.log(" No candidate found with attendance token:", token);
       return res.status(404).json({ message: "Candidate not found" });
     }
     
-    console.log(`✅ Found candidate: ${candidate.name} (${candidate.email})`);
-    console.log(`📋 Attendance status: ${candidate.attendance ? 'Marked' : 'Not marked'}`);
-    console.log(`👨‍💼 Admin attendance status: ${candidate.adminAttendance ? 'Already scanned' : 'Not scanned yet'}`);
+    console.log(` Found candidate: ${candidate.name} (${candidate.email})`);
+    console.log(` Attendance status: ${candidate.attendance ? 'Marked' : 'Not marked'}`);
+    console.log(`Admin attendance status: ${candidate.adminAttendance ? 'Already scanned' : 'Not scanned yet'}`);
     
     if (!candidate.attendance) {
-      console.log("⚠️ Candidate did not mark attendance first");
+      console.log(" Candidate did not mark attendance first");
       return res.status(400).json({ message: "Candidate did not mark attendance" });
     }
     
     if (candidate.adminAttendance) {
-      console.log("ℹ️ Admin attendance already marked");
+      console.log(" Admin attendance already marked");
       return res.status(200).json({
         status: "already-marked",
         message: "Admin already marked attendance",
@@ -473,7 +473,7 @@ adminAttendanceScan: async (req, res) => {
     candidate.adminAttendanceDate = new Date();
     await candidate.save();
     
-    console.log(`✅ Admin attendance marked for: ${candidate.name}`);
+    console.log(` Admin attendance marked for: ${candidate.name}`);
 
     res.json({
       status: "success",
@@ -546,7 +546,7 @@ createOrderForExistingCandidate: async (req, res) => {
       orderDate: new Date(),
       paymentStatus: 'Pending'
     });
-    console.log(`💳 Order created for ${candidate.name}: ${order.id}`);
+    console.log(` Order created for ${candidate.name}: ${order.id}`);
     res.json({
       status: 'success',
       order,
@@ -618,18 +618,18 @@ verifyPaymentId: async (req, res) => {
   try {
     console.log("🔍 Looking for candidate with paymentId:", req.params.id);
     
-    // Search by paymentId field instead of _id
+    
     const candidate = await Candidate.findOne({ paymentId: req.params.id });
     
     if (!candidate) {
-      console.log("❌ No candidate found with paymentId:", req.params.id);
+      console.log(" No candidate found with paymentId:", req.params.id);
       return res.status(404).json({
         status: 'error',
         message: 'Candidate not found'
       });
     }
     
-    console.log("✅ Candidate found:", candidate.name, "Payment Status:", candidate.paymentStatus);
+    console.log(" Candidate found:", candidate.name, "Payment Status:", candidate.paymentStatus);
     
     res.json({
       status: 'success',
@@ -644,7 +644,7 @@ verifyPaymentId: async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('❌ Error fetching payment verification:', error);
+    console.error(' Error fetching payment verification:', error);
     res.status(500).json({
       status: 'error',
       message: error.message
@@ -1066,7 +1066,7 @@ attendanceList: async (req, res) => {
       }
       
       if (candidate.certificateSent) {
-        console.log(`ℹ️ Certificate already sent to ${candidate.name} - Document ID: ${candidate.certificateDocumentId}`);
+        console.log(`Certificate already sent to ${candidate.name} - Document ID: ${candidate.certificateDocumentId}`);
         return res.status(200).json({
           status: "already-sent",
           message: `Certificate already sent to ${candidate.name} on ${candidate.certificateSentDate?.toLocaleDateString()}`,
@@ -1087,7 +1087,7 @@ attendanceList: async (req, res) => {
         });
       }
 
-      console.log(`📝 Generating and sending certificate for ${candidate.name} via Cloudinary by saikiran11461`);
+      console.log(` Generating and sending certificate for ${candidate.name} via Cloudinary by saikiran11461`);
       
 
       const certificatePath = tempDir;
@@ -1181,7 +1181,7 @@ attendanceList: async (req, res) => {
     try {
       const { candidateId } = req.body;
       
-      console.log(`📄 Certificate generation only requested by saikiran11461 at 2025-08-24 18:19:32 UTC for candidate ID: ${candidateId}`);
+      console.log(` Certificate generation only requested by saikiran11461 at 2025-08-24 18:19:32 UTC for candidate ID: ${candidateId}`);
       
       const candidate = await Candidate.findById(candidateId);
       
@@ -1215,10 +1215,10 @@ attendanceList: async (req, res) => {
       const documentId = generateDocumentId(candidate.name);
       const outputPath = path.join(tempDir, `${documentId}.pdf`);
       
-      console.log(`📝 Generating certificate PDF for ${candidate.name} by saikiran11461`);
+      console.log(` Generating certificate PDF for ${candidate.name} by saikiran11461`);
       const certData = await generateCertificatePDF(candidate.name, outputPath, documentId);
 
-      console.log(`✅ Certificate generated for ${candidate.name} by saikiran11461 - Document ID: ${documentId}`);
+      console.log(` Certificate generated for ${candidate.name} by saikiran11461 - Document ID: ${documentId}`);
 
       return res.json({ 
         status: "success", 
@@ -1257,7 +1257,7 @@ attendanceList: async (req, res) => {
     try {
       const { documentId } = req.params;
       
-      console.log(`🔍 Certificate lookup by Document ID: ${documentId} requested by saikiran11461 at 2025-08-24 18:19:32 UTC`);
+      console.log(` Certificate lookup by Document ID: ${documentId} requested by saikiran11461 at 2025-08-24 18:19:32 UTC`);
       
 
       const candidate = await Candidate.findOne({ certificateDocumentId: documentId });
@@ -1274,7 +1274,7 @@ attendanceList: async (req, res) => {
         });
       }
 
-      console.log(`✅ Certificate found for ${candidate.name} - Document ID: ${documentId}`);
+      console.log(` Certificate found for ${candidate.name} - Document ID: ${documentId}`);
 
 
       let cloudinaryDirectUrl = null;
@@ -1411,7 +1411,7 @@ attendanceList: async (req, res) => {
     try {
       const { candidateId } = req.body;
       
-      console.log(`🔄 Certificate resend requested by saikiran11461 at 2025-08-24 18:19:32 UTC for candidate ID: ${candidateId}`);
+      console.log(` Certificate resend requested by saikiran11461 at 2025-08-24 18:19:32 UTC for candidate ID: ${candidateId}`);
       
       const candidate = await Candidate.findById(candidateId);
 
@@ -1446,7 +1446,7 @@ attendanceList: async (req, res) => {
       const oldDocumentId = candidate.certificateDocumentId;
       const oldCloudinaryUrl = candidate.certificateCloudinaryUrl;
 
-      console.log(`🔄 Regenerating certificate for ${candidate.name} (replacing ${oldDocumentId}) by saikiran11461`);
+      console.log(` Regenerating certificate for ${candidate.name} (replacing ${oldDocumentId}) by saikiran11461`);
 
  
       const certificatePath = tempDir;
@@ -1527,7 +1527,7 @@ attendanceList: async (req, res) => {
 
 getCertificateSystemHealth: async (req, res) => {
   try {
-    console.log(`🏥 Certificate system health check by saikiran11461 at 2025-08-24 18:19:32 UTC`);
+    console.log(` Certificate system health check by saikiran11461 at 2025-08-24 18:19:32 UTC`);
 
     const cloudinaryTest = await testCloudinaryConnection();
     const whatsappTest = await testWhatsAppConnection();

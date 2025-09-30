@@ -4,7 +4,7 @@ const userModel = require("../models/userModel");
 const authenticateToken = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
-    const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+    const token = authHeader && authHeader.split(' ')[1]; 
 
     if (!token) {
       return res.status(401).json({ 
@@ -13,10 +13,9 @@ const authenticateToken = async (req, res, next) => {
       });
     }
 
-    // Verify the token
+
     const decoded = jwt.verify(token, "saikiranjwtkey");
-    
-    // Check if user still exists
+
     const user = await userModel.findById(decoded.id);
     if (!user) {
       return res.status(401).json({ 
@@ -25,7 +24,7 @@ const authenticateToken = async (req, res, next) => {
       });
     }
 
-    // Add user info to request
+   
     req.user = {
       id: user._id,
       email: user.email,

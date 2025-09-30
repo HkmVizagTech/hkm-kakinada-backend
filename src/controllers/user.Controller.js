@@ -101,7 +101,7 @@ const userController = {
 
     validateToken: async(req, res) => {
         try {
-            // If we reach here, the authenticateToken middleware has already validated the token
+       
             return res.status(200).json({
                 status: 'success',
                 message: 'Token is valid',
