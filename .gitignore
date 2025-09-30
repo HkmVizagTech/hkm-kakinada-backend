@@ -1,0 +1,12 @@
+.env
+/node_modules
+.DS_Store
+src/temp/*.pdf
+src/temp/certificates/*.pdf
+*.log
+logs/
+.nyc_output/
+coverage/
+.cache/
+dist/
+build/
