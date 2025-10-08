@@ -134,49 +134,95 @@ const CandidateController = {
   },
 
   webhook: async (req, res) => {
+    console.log("🔔 Webhook received");
+    console.log("📋 Headers:", req.headers);
+    
     const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
     const signature = req.headers['x-razorpay-signature'];
+
+    if (!webhookSecret) {
+      console.error("❌ RAZORPAY_WEBHOOK_SECRET not configured");
+      return res.status(500).send('Webhook secret not configured');
+    }
+
+    if (!signature) {
+      console.error("❌ No signature in webhook request");
+      return res.status(400).send('No signature provided');
+    }
 
     const expectedSignature = crypto.createHmac('sha256', webhookSecret)
       .update(req.rawBody)
       .digest('hex');
 
     if (expectedSignature !== signature) {
+      console.error("❌ Webhook signature verification failed");
+      console.error("Expected:", expectedSignature);
+      console.error("Received:", signature);
       return res.status(400).send('Invalid signature');
     }
 
+    console.log("✅ Webhook signature verified");
+
     const event = req.body.event;
     const payload = req.body.payload;
+
+    console.log("📨 Event:", event);
+    console.log("📦 Payload:", JSON.stringify(payload, null, 2));
 
     if (event === "payment.captured") {
       const payment = payload.payment.entity;
       const orderId = payment.order_id;
       const paymentId = payment.id;
 
+      console.log("💳 Processing payment.captured event");
+      console.log("🆔 Order ID:", orderId);
+      console.log("💰 Payment ID:", paymentId);
+
       try {
         let candidate = await Candidate.findOne({ orderId: orderId });
-        if (candidate && candidate.paymentStatus !== "Paid") {
+        
+        if (!candidate) {
+          console.error("❌ No candidate found with orderId:", orderId);
+          return res.status(404).json({ status: "error", message: "Candidate not found" });
+        }
+
+        console.log("👤 Found candidate:", candidate.name, "- Current status:", candidate.paymentStatus);
+
+        if (candidate.paymentStatus !== "Paid") {
           candidate.paymentStatus = "Paid";
           candidate.paymentId = paymentId;
           candidate.paymentDate = new Date();
           candidate.paymentMethod = payment.method || "Online";
           candidate.razorpayPaymentData = payment;
           candidate.paymentUpdatedBy = "webhook";
+          
           await candidate.save();
+          console.log("✅ Payment status updated for:", candidate.name);
 
+          // Send WhatsApp message
           if (!candidate.whatsappNumber) {
-            console.error("Cannot send WhatsApp: candidate.whatsappNumber is missing for", candidate._id);
+            console.error("⚠️ Cannot send WhatsApp: whatsappNumber is missing for", candidate._id);
           } else {
-            await sendWhatsappGupshup(candidate);
+            try {
+              await sendWhatsappGupshup(candidate);
+              console.log("📱 WhatsApp message sent to:", candidate.whatsappNumber);
+            } catch (whatsappError) {
+              console.error("📱 WhatsApp sending failed:", whatsappError);
+            }
           }
+        } else {
+          console.log("ℹ️ Payment already processed for:", candidate.name);
         }
+        
         return res.json({ status: "ok" });
       } catch (err) {
-        console.error("Webhook processing error:", err);
-        return res.status(500).send("error");
+        console.error("❌ Webhook processing error:", err);
+        return res.status(500).json({ status: "error", message: err.message });
       }
+    } else {
+      console.log("🚫 Ignoring event:", event);
+      return res.json({ status: "ignored" });
     }
-    return res.json({ status: "ignored" });
   },
 
   createCandidate: async (req, res) => {
@@ -652,50 +698,7 @@ verifyPaymentId: async (req, res) => {
   }
 },
 
-webhook: async (req, res) => {
-  try {
-    const webhookSignature = req.headers['x-razorpay-signature'];
-    const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
-    if (webhookSecret) {
-      const expectedSignature = crypto
-        .createHmac('sha256', webhookSecret)
-        .update(JSON.stringify(req.body))
-        .digest('hex');
-      if (expectedSignature !== webhookSignature) {
-        return res.status(400).json({
-          status: 'error',
-          message: 'Webhook signature verification failed'
-        });
-      }
-    }
-    const event = req.body.event;
-    const paymentEntity = req.body.payload.payment.entity;
-    console.log(` Webhook received: ${event}`);
-    if (event === 'payment.captured') {
-      const candidate = await Candidate.findOneAndUpdate(
-        { razorpayOrderId: paymentEntity.order_id },
-        {
-          paymentStatus: 'Paid',
-          paymentDate: new Date(),
-          webhookProcessed: true,
-          webhookProcessedAt: new Date(),
-          processedBy: 'webhook_saikiran11461'
-        },
-        { new: true }
-      );
-      if (candidate) {
-        console.log(` Webhook processed for ${candidate.name}`);
-      }
-    }
-    res.status(200).json({ status: 'ok' });
-  } catch (error) {
-    console.error(' Webhook error:', error);
-    res.status(500).json({
-      status: 'error',
-      message: error.message
-    });
-  }
-},
+
 
 markAttendanceById: async (req, res) => {
   try {

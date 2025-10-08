@@ -25,7 +25,6 @@ CandidateRouter.post('/resend-certificate', authenticateToken, requireRole(['adm
 CandidateRouter.post('/create-order', CandidateController.createOrder);   
 CandidateRouter.post('/verify-payment', CandidateController.verifyPayment); 
 CandidateRouter.post('/', CandidateController.createCandidate);           
-CandidateRouter.post('/webhook', CandidateController.webhook);
 CandidateRouter.post("/mark-attendance", CandidateController.markAttendance);
 CandidateRouter.post('/admin/attendance-scan', authenticateToken, requireRole(['admin', 'user']), CandidateController.adminAttendanceScan);
 CandidateRouter.post('/generate-single-certificate', authenticateToken, requireRole(['admin']), CandidateController.generateSingleCertificateOnly);
