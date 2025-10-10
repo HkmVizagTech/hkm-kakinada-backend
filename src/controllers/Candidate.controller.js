@@ -2137,12 +2137,11 @@ acceptCandidate: async (req, res) => {
     // Send WhatsApp acceptance message using template
     const acceptTemplateId = 'f248fb66-c4f2-4367-ae4a-243db76b3d1b';
     
-    try {
-      const whatsappResult = await sendWhatsappGupshup(candidate, [candidate.name], acceptTemplateId);
-      console.log(`✅ Acceptance WhatsApp sent to ${candidate.name}:`, whatsappResult);
-    } catch (whatsappError) {
-      console.error(`❌ Failed to send acceptance WhatsApp to ${candidate.name}:`, whatsappError);
-    }
+    console.log(`📱 Attempting to send acceptance WhatsApp to ${candidate.name} (${candidate.whatsappNumber})`);
+    console.log(`📋 Using template ID: ${acceptTemplateId}`);
+    
+    const whatsappResult = await sendWhatsappGupshup(candidate, [candidate.name], acceptTemplateId);
+    console.log(`✅ Acceptance WhatsApp result for ${candidate.name}:`, JSON.stringify(whatsappResult, null, 2));
 
     console.log(`✅ Candidate ${candidate.name} accepted by admin`);
     res.json({
@@ -2179,12 +2178,11 @@ rejectCandidate: async (req, res) => {
     // Send WhatsApp rejection message using template
     const rejectTemplateId = '8cfaf485-4089-40c8-b02a-5be75d7d68dd';
     
-    try {
-      const whatsappResult = await sendWhatsappGupshup(candidate, [candidate.name], rejectTemplateId);
-      console.log(`✅ Rejection WhatsApp sent to ${candidate.name}:`, whatsappResult);
-    } catch (whatsappError) {
-      console.error(`❌ Failed to send rejection WhatsApp to ${candidate.name}:`, whatsappError);
-    }
+    console.log(`📱 Attempting to send rejection WhatsApp to ${candidate.name} (${candidate.whatsappNumber})`);
+    console.log(`📋 Using template ID: ${rejectTemplateId}`);
+    
+    const whatsappResult = await sendWhatsappGupshup(candidate, [candidate.name], rejectTemplateId);
+    console.log(`✅ Rejection WhatsApp result for ${candidate.name}:`, JSON.stringify(whatsappResult, null, 2));
 
     console.log(`✅ Candidate ${candidate.name} rejected by admin`);
     res.json({

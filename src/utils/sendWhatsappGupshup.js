@@ -255,25 +255,26 @@ async function sendWhatsappGupshup(candidate, templateParams = [candidate.name],
     
       console.log(`📤 Sending template message to ${candidate.name} (${normalizedNumber})`);
       
-      if (gupshup && gupshup.sendingTextTemplate) {
-   
-        let templateId = templateIdOverride;
-        if (!templateId) {
-          switch ((candidate.gender || '').trim().toLowerCase()) {
-            case 'male': 
-              templateId = 'f248fb66-c4f2-4367-ae4a-243db76b3d1b'; 
-              console.log('🚹 Using male template');
-              break;
-            case 'female': 
-              templateId = '8cfaf485-4089-40c8-b02a-5be75d7d68dd'; 
-              console.log('🚺 Using female template');
-              break;
-            default: 
-              templateId = 'f248fb66-c4f2-4367-ae4a-243db76b3d1b';
-              console.log('⚪ Using default template');
-          }
+      // Determine template ID
+      let templateId = templateIdOverride;
+      if (!templateId) {
+        switch ((candidate.gender || '').trim().toLowerCase()) {
+          case 'male': 
+            templateId = 'f248fb66-c4f2-4367-ae4a-243db76b3d1b'; 
+            console.log('🚹 Using male template');
+            break;
+          case 'female': 
+            templateId = '8cfaf485-4089-40c8-b02a-5be75d7d68dd'; 
+            console.log('🚺 Using female template');
+            break;
+          default: 
+            templateId = 'f248fb66-c4f2-4367-ae4a-243db76b3d1b';
+            console.log('⚪ Using default template');
         }
+      }
 
+      if (gupshup && gupshup.sendingTextTemplate) {
+        // Use Gupshup SDK
         const message = await gupshup.sendingTextTemplate({
           template: { id: templateId, params: templateParams },
           'src.name': 'Production',
@@ -283,15 +284,33 @@ async function sendWhatsappGupshup(candidate, templateParams = [candidate.name],
           apikey: GUPSHUP_API_KEY
         });
         
-        console.log('✅ Template message sent successfully:', message.data);
+        console.log('✅ Template message sent via SDK:', message.data);
         return message.data;
       } else {
-      
-        const directMessage = `Hare Krishna ${candidate.name}! 🙏\n\nThank you for your participation in the Krishna Pulse Youth Fest! Your registration is confirmed and we're excited to have you join us.\n\nWith best wishes,\nHare Krishna Movement, Visakhapatnam`;
+        // Use direct axios for template messaging
+        console.log('🔄 Using direct axios for template messaging...');
         
-        const response = await sendDirectTextMessage(normalizedNumber, candidate, directMessage);
-        console.log('✅ Direct message sent successfully:', response);
-        return response;
+        const templatePayload = {
+          channel: 'whatsapp',
+          source: GUPSHUP_SOURCE,
+          destination: normalizedNumber,
+          'src.name': 'Production',
+          template: JSON.stringify({
+            id: templateId,
+            params: templateParams
+          })
+        };
+
+        const response = await axios.post('https://api.gupshup.io/sm/api/v1/template/msg', templatePayload, {
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': GUPSHUP_API_KEY
+          },
+          timeout: 30000
+        });
+
+        console.log('✅ Template message sent via axios:', response.data);
+        return response.data;
       }
     }
   } catch (err) {
