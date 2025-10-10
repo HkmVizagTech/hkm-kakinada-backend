@@ -54,10 +54,38 @@ app.get('/emergency-payment-fix', (req, res) => {
   console.log('🚨 Emergency payment fix endpoint called at:', new Date().toISOString());
   res.json({ 
     status: 'ok', 
-    message: 'Emergency endpoint is working. Use /users/check-pending-payments with proper auth for payment fixes.',
+    message: 'Emergency endpoint is working. Use /check-pending-payments for payment fixes.',
     timestamp: new Date().toISOString(),
     server: 'production'
   });
+});
+
+// Emergency payment fix endpoint (direct route to avoid conflicts)
+app.get('/check-pending-payments', async (req, res) => {
+  try {
+    console.log('🚨 Check pending payments called at:', new Date().toISOString());
+    const { CandidateController } = require('./src/controllers/Candidate.controller');
+    
+    // Create a mock authenticated request
+    const mockReq = { user: { role: 'admin' } };
+    const mockRes = {
+      json: (data) => {
+        console.log('📊 Payment check results:', JSON.stringify(data, null, 2));
+        res.json(data);
+      },
+      status: (code) => ({
+        json: (data) => {
+          console.log(`❌ Payment check error (${code}):`, data);
+          res.status(code).json(data);
+        }
+      })
+    };
+    
+    await CandidateController.checkPendingPayments(mockReq, mockRes);
+  } catch (error) {
+    console.error('💥 Check pending payments error:', error);
+    res.status(500).json({ error: error.message });
+  }
 });
 
 app.use("/users", CandidateRouter);
