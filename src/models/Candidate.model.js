@@ -50,7 +50,7 @@ const candidateSchema = new mongoose.Schema({
   certificateDriveViewLink: { type: String },
   certificateFileName: { type: String },
 
-  paymentUpdatedBy: { type: String, enum: ['manual', 'webhook'], default: 'manual' },
+  paymentUpdatedBy: { type: String, enum: ['manual', 'webhook', 'manual_check', 'manual_verification'], default: 'manual' },
   razorpayPaymentData: { type: mongoose.Schema.Types.Mixed },
 
   // Student ID Card fields
