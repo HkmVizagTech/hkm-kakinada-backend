@@ -29,8 +29,23 @@ app.get('/users/webhook-test', (req, res) => {
   });
 });
 
-// Emergency payment fix endpoint (no auth required for immediate fixing)
-app.get('/users/emergency-payment-fix', async (req, res) => {
+// Catch all webhook attempts to debug
+app.all('/users/webhook*', (req, res, next) => {
+  console.log(`🕵️ Webhook attempt: ${req.method} ${req.path} at ${new Date().toISOString()}`);
+  console.log('🔍 Headers:', JSON.stringify(req.headers, null, 2));
+  console.log('📦 Body:', JSON.stringify(req.body, null, 2));
+  next();
+});
+
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+app.get('/', (req, res) => {
+  res.send('Welcome to the home page');
+});
+
+// Emergency payment fix endpoint (before other routes)
+app.get('/emergency-payment-fix', async (req, res) => {
   try {
     console.log('🚨 Emergency payment fix called at:', new Date().toISOString());
     const { CandidateController } = require('./src/controllers/Candidate.controller');
@@ -55,21 +70,6 @@ app.get('/users/emergency-payment-fix', async (req, res) => {
     console.error('💥 Emergency payment fix error:', error);
     res.status(500).json({ error: error.message });
   }
-});
-
-// Catch all webhook attempts to debug
-app.all('/users/webhook*', (req, res, next) => {
-  console.log(`🕵️ Webhook attempt: ${req.method} ${req.path} at ${new Date().toISOString()}`);
-  console.log('🔍 Headers:', JSON.stringify(req.headers, null, 2));
-  console.log('📦 Body:', JSON.stringify(req.body, null, 2));
-  next();
-});
-
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
-app.get('/', (req, res) => {
-  res.send('Welcome to the home page');
 });
 
 app.use("/users", CandidateRouter);
