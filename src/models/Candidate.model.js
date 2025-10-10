@@ -24,6 +24,7 @@ const candidateSchema = new mongoose.Schema({
   paymentAmount: { type: Number, required: true },
   paymentDate: { type: Date },
   paymentMethod: { type: String },
+  paymentFailureReason: { type: String },
   receipt: { type: String },
 
   remindersSent: {

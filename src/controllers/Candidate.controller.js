@@ -337,6 +337,56 @@ const CandidateController = {
         console.error(" Webhook processing error:", err);
         return res.status(500).json({ status: "error", message: err.message });
       }
+    } else if (event === "payment.failed") {
+      const payment = payload.payment.entity;
+      const orderId = payment.order_id;
+      const paymentId = payment.id;
+
+      console.log("❌ Processing payment.failed event");
+      console.log("🆔 Order ID:", orderId);
+      console.log("💳 Payment ID:", paymentId);
+      console.log("❌ Failure Reason:", payment.error_reason || 'Unknown');
+
+      try {
+        let candidate = await Candidate.findOne({ orderId: orderId });
+        
+        if (!candidate) {
+          console.error("❌ No candidate found with orderId:", orderId);
+          return res.status(404).json({ status: "error", message: "Candidate not found" });
+        }
+
+        console.log("👤 Found candidate:", candidate.name, "- Current status:", candidate.paymentStatus);
+
+        // Only update if it's still pending (don't override if already paid)
+        if (candidate.paymentStatus === "Pending") {
+          console.log(`💳 Updating payment status from ${candidate.paymentStatus} to Failed`);
+          
+          candidate.paymentStatus = "Failed";
+          candidate.paymentId = paymentId;
+          candidate.paymentDate = new Date();
+          candidate.paymentFailureReason = payment.error_reason || payment.error_description || 'Payment cancelled by user';
+          candidate.razorpayPaymentData = payment;
+          candidate.paymentUpdatedBy = "webhook";
+          
+          const savedCandidate = await candidate.save();
+          console.log("❌ Payment status updated to Failed for:", savedCandidate.name);
+          console.log("📊 Updated candidate data:", {
+            id: savedCandidate._id,
+            name: savedCandidate.name,
+            paymentStatus: savedCandidate.paymentStatus,
+            paymentId: savedCandidate.paymentId,
+            orderId: savedCandidate.orderId,
+            failureReason: savedCandidate.paymentFailureReason
+          });
+        } else {
+          console.log("ℹ️ Payment already processed for:", candidate.name, "- Status:", candidate.paymentStatus);
+        }
+        
+        return res.json({ status: "ok" });
+      } catch (err) {
+        console.error("❌ Webhook processing error for failed payment:", err);
+        return res.status(500).json({ status: "error", message: err.message });
+      }
     } else {
       console.log(" Ignoring event:", event);
       return res.json({ status: "ignored" });
