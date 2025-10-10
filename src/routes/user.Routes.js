@@ -8,6 +8,6 @@ const userRouter = Router();
 userRouter.get("/", userController.getUser);
 userRouter.post("/register", userController.register);
 userRouter.post("/login", userController.login);
-userRouter.get("/validate-token", authenticateToken, userController.validateToken);
+userRouter.post("/validate-token", authenticateToken, userController.validateToken);
 
 module.exports = {userRouter}
