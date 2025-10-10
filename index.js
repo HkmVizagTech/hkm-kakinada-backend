@@ -105,12 +105,12 @@ process.on('unhandledRejection', (reason, promise) => {
   process.exit(1);
 });
 
-// Automatic payment status checker - runs every 2 minutes
+// Automatic payment status checker - runs every 10 seconds
 const startAutomaticPaymentChecker = () => {
   console.log('🤖 Starting automatic payment status checker...');
   
-  // Run every 2 minutes
-  cron.schedule('*/2 * * * *', async () => {
+  // Run every 10 seconds
+  cron.schedule('*/10 * * * * *', async () => {
     try {
       console.log('🔄 Auto-checking pending payments...', new Date().toISOString());
       
@@ -153,7 +153,7 @@ const server = app.listen(PORT, '0.0.0.0', () => {
       // Start automatic payment checker after DB is connected
       setTimeout(() => {
         startAutomaticPaymentChecker();
-        console.log('🤖 Automatic payment checker started - will run every 2 minutes');
+        console.log('🤖 Automatic payment checker started - will run every 10 seconds');
       }, 5000); // Wait 5 seconds after server starts
       
     })
