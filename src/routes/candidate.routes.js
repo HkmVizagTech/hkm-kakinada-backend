@@ -31,7 +31,7 @@ CandidateRouter.put('/:id', authenticateToken, requireRole(['admin']), Candidate
 CandidateRouter.delete('/asm', authenticateToken, requireRole(['admin']), CandidateController.deleteByName);
 CandidateRouter.delete('/:id', authenticateToken, requireRole(['admin']), CandidateController.deleteCandidate);     
 
-// This should be last as it has the most generic pattern
+
 CandidateRouter.get('/:id', CandidateController.getCandidateById);   
 
 module.exports = { CandidateRouter };
