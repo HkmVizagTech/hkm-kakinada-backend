@@ -237,8 +237,9 @@ const CandidateController = {
   },
 
   webhook: async (req, res) => {
-    console.log("🔔 Webhook received");
+    console.log("🔔 Webhook received at:", new Date().toISOString());
     console.log("📋 Headers:", req.headers);
+    console.log("📦 Request body:", JSON.stringify(req.body, null, 2));
     
     const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
     const signature = req.headers['x-razorpay-signature'];
@@ -292,6 +293,8 @@ const CandidateController = {
         console.log("👤 Found candidate:", candidate.name, "- Current status:", candidate.paymentStatus);
 
         if (candidate.paymentStatus !== "Paid") {
+          console.log(`💳 Updating payment status from ${candidate.paymentStatus} to Paid`);
+          
           candidate.paymentStatus = "Paid";
           candidate.paymentId = paymentId;
           candidate.paymentDate = new Date();
@@ -299,8 +302,15 @@ const CandidateController = {
           candidate.razorpayPaymentData = payment;
           candidate.paymentUpdatedBy = "webhook";
           
-          await candidate.save();
-          console.log("✅ Payment status updated for:", candidate.name);
+          const savedCandidate = await candidate.save();
+          console.log("✅ Payment status updated successfully for:", savedCandidate.name);
+          console.log("📊 Updated candidate data:", {
+            id: savedCandidate._id,
+            name: savedCandidate.name,
+            paymentStatus: savedCandidate.paymentStatus,
+            paymentId: savedCandidate.paymentId,
+            orderId: savedCandidate.orderId
+          });
 
           // Send WhatsApp message
           if (!candidate.whatsappNumber) {
@@ -308,13 +318,13 @@ const CandidateController = {
           } else {
             try {
               await sendWhatsappGupshup(candidate);
-              console.log("📱 WhatsApp message sent to:", candidate.whatsappNumber);
+              console.log("📱 WhatsApp message sent successfully to:", candidate.whatsappNumber);
             } catch (whatsappError) {
-              console.error("📱 WhatsApp sending failed:", whatsappError);
+              console.error("📱 WhatsApp sending failed:", whatsappError.message);
             }
           }
         } else {
-          console.log("ℹ️ Payment already processed for:", candidate.name);
+          console.log("ℹ️ Payment already processed for:", candidate.name, "- Status:", candidate.paymentStatus);
         }
         
         return res.json({ status: "ok" });
@@ -767,20 +777,52 @@ verifyPaymentId: async (req, res) => {
   try {
     console.log("🔍 Looking for candidate with paymentId:", req.params.id);
     
-    
     const candidate = await Candidate.findOne({ paymentId: req.params.id });
     
     if (!candidate) {
-      console.log(" No candidate found with paymentId:", req.params.id);
+      console.log("❌ No candidate found with paymentId:", req.params.id);
       return res.status(404).json({
+        success: false,
         status: 'error',
         message: 'Candidate not found'
       });
     }
     
-    console.log(" Candidate found:", candidate.name, "Payment Status:", candidate.paymentStatus);
+    console.log("✅ Candidate found:", candidate.name, "Payment Status:", candidate.paymentStatus);
+    
+    // If payment is still pending, try to verify with Razorpay directly
+    if (candidate.paymentStatus === 'Pending' && candidate.paymentId) {
+      console.log("🔄 Payment still pending, checking with Razorpay...");
+      try {
+        const payment = await razorpay.payments.fetch(candidate.paymentId);
+        console.log("💳 Razorpay payment status:", payment.status);
+        
+        if (payment.status === 'captured') {
+          console.log("✅ Payment was captured, updating candidate status");
+          candidate.paymentStatus = 'Paid';
+          candidate.paymentDate = new Date(payment.created_at * 1000);
+          candidate.paymentMethod = payment.method || 'Online';
+          candidate.paymentUpdatedBy = 'manual_verification';
+          candidate.razorpayPaymentData = payment;
+          await candidate.save();
+          
+          // Send WhatsApp message if not sent
+          if (candidate.whatsappNumber) {
+            try {
+              await sendWhatsappGupshup(candidate);
+              console.log("📱 WhatsApp message sent to:", candidate.whatsappNumber);
+            } catch (whatsappError) {
+              console.error("📱 WhatsApp sending failed:", whatsappError);
+            }
+          }
+        }
+      } catch (razorpayError) {
+        console.error("❌ Error fetching payment from Razorpay:", razorpayError);
+      }
+    }
     
     res.json({
+      success: true,
       status: 'success',
       candidate: {
         name: candidate.name,
@@ -793,8 +835,9 @@ verifyPaymentId: async (req, res) => {
       }
     });
   } catch (error) {
-    console.error(' Error fetching payment verification:', error);
+    console.error('❌ Error fetching payment verification:', error);
     res.status(500).json({
+      success: false,
       status: 'error',
       message: error.message
     });

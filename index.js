@@ -18,6 +18,16 @@ app.post('/users/webhook', bodyParser.json({
   verify: (req, res, buf) => { req.rawBody = buf; }
 }), CandidateController.webhook);
 
+// Test endpoint to verify webhook connectivity
+app.get('/users/webhook-test', (req, res) => {
+  console.log('🧪 Webhook test endpoint called at:', new Date().toISOString());
+  res.json({ 
+    status: 'ok', 
+    message: 'Webhook endpoint is reachable',
+    timestamp: new Date().toISOString(),
+    server: 'production'
+  });
+});
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
