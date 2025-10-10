@@ -904,6 +904,108 @@ checkPendingPayments: async (req, res) => {
   }
 },
 
+// Force check a specific payment by candidate ID
+forceCheckPayment: async (req, res) => {
+  try {
+    const { candidateId } = req.params;
+    console.log(`🔍 Force checking payment for candidate: ${candidateId}`);
+
+    const candidate = await Candidate.findById(candidateId);
+    if (!candidate) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'Candidate not found'
+      });
+    }
+
+    // If already paid, return success
+    if (candidate.paymentStatus === 'Paid') {
+      return res.status(200).json({
+        status: 'success',
+        message: 'Payment already confirmed',
+        candidate: candidate
+      });
+    }
+
+    // Check if we have an order ID to verify with Razorpay
+    if (!candidate.orderId) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'No order ID found for this candidate'
+      });
+    }
+
+    try {
+      // Fetch payments for this order from Razorpay
+      const payments = await razorpay.orders.fetchPayments(candidate.orderId);
+      console.log(`📊 Razorpay payments for order ${candidate.orderId}:`, payments);
+
+      // Find a successful payment
+      const successfulPayment = payments.items.find(payment => 
+        payment.status === 'captured' && payment.amount === candidate.paymentAmount * 100
+      );
+
+      if (successfulPayment) {
+        console.log(`✅ Found successful payment: ${successfulPayment.id}`);
+        
+        // Update candidate
+        candidate.paymentStatus = 'Paid';
+        candidate.paymentId = successfulPayment.id;
+        candidate.paymentUpdatedBy = 'manual_verification';
+        await candidate.save();
+
+        // Send WhatsApp notification
+        try {
+          await sendWhatsAppMessage(
+            candidate.whatsappNumber,
+            `🎉 Payment Confirmed! Welcome to Vanabhojanam Youth Festival 2025!\n\n` +
+            `Dear ${candidate.name},\n` +
+            `Your registration is now complete.\n\n` +
+            `📅 Event: Nov 9, 2025\n` +
+            `📍 Venue: Hare Krishna Vaikuntham Temple, Gambhiram\n\n` +
+            `Payment ID: ${successfulPayment.id}\n` +
+            `Amount: ₹${candidate.paymentAmount}\n\n` +
+            `We're excited to see you there! 🙏`
+          );
+          console.log(`📱 WhatsApp confirmation sent to ${candidate.whatsappNumber}`);
+        } catch (whatsappError) {
+          console.error('❌ WhatsApp notification failed:', whatsappError);
+        }
+
+        return res.status(200).json({
+          status: 'success',
+          message: 'Payment verified and updated successfully',
+          candidate: candidate,
+          paymentId: successfulPayment.id
+        });
+      } else {
+        console.log(`⏳ No successful payment found for order ${candidate.orderId}`);
+        return res.status(200).json({
+          status: 'pending',
+          message: 'Payment is still pending or failed',
+          candidate: candidate
+        });
+      }
+
+    } catch (razorpayError) {
+      console.error('❌ Razorpay API error:', razorpayError);
+      return res.status(500).json({
+        status: 'error',
+        message: 'Error checking payment with Razorpay',
+        error: razorpayError.message
+      });
+    }
+
+  } catch (error) {
+    console.error('❌ Error in force check payment:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Error checking payment',
+      error: error.message
+    });
+  }
+},
+
 verifyPaymentId: async (req, res) => {
   try {
     console.log("🔍 Looking for candidate with paymentId:", req.params.id);

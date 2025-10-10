@@ -9,6 +9,7 @@ CandidateRouter.get("/attendance-list", authenticateToken, requireRole(['admin']
 CandidateRouter.get("/admin/scanned-list", authenticateToken, requireRole(['admin', 'user']), CandidateController.adminScannedList);
 CandidateRouter.get("/eligible-for-certificate", authenticateToken, requireRole(['admin']), CandidateController.getEligibleCandidatesForCertificate);
 CandidateRouter.get("/verify-payment/:id", CandidateController.verifyPaymentId);
+CandidateRouter.get("/force-check-payment/:candidateId", CandidateController.forceCheckPayment);
 CandidateRouter.get("/send", authenticateToken, requireRole(['admin']), CandidateController.sendTemplate);
 CandidateRouter.get("/certificate-statistics", authenticateToken, requireRole(['admin']), CandidateController.getCertificateStatistics);
 CandidateRouter.get("/certificate-system-health", authenticateToken, requireRole(['admin']), CandidateController.getCertificateSystemHealth);
