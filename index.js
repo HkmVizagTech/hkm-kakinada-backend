@@ -105,6 +105,41 @@ process.on('unhandledRejection', (reason, promise) => {
   process.exit(1);
 });
 
+// Automatic payment status checker - runs every 2 minutes
+const startAutomaticPaymentChecker = () => {
+  console.log('🤖 Starting automatic payment status checker...');
+  
+  // Run every 2 minutes
+  cron.schedule('*/2 * * * *', async () => {
+    try {
+      console.log('🔄 Auto-checking pending payments...', new Date().toISOString());
+      
+      const { CandidateController } = require('./src/controllers/Candidate.controller');
+      
+      // Create a mock request/response for the controller
+      const mockReq = { user: { role: 'admin' } };
+      const mockRes = {
+        json: (data) => {
+          if (data.totalUpdated > 0) {
+            console.log(`✅ Auto-updated ${data.totalUpdated} payments automatically`);
+          } else {
+            console.log('ℹ️ No pending payments to update');
+          }
+        },
+        status: (code) => ({
+          json: (data) => {
+            console.log(`⚠️ Auto-payment check error (${code}):`, data.message);
+          }
+        })
+      };
+      
+      await CandidateController.checkPendingPayments(mockReq, mockRes);
+    } catch (error) {
+      console.error('❌ Auto payment check failed:', error.message);
+    }
+  });
+};
+
 // Start server with better error handling
 const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Server starting on port ${PORT}`);
@@ -114,6 +149,13 @@ const server = app.listen(PORT, '0.0.0.0', () => {
   Connection()
     .then(() => {
       console.log('✅ Database connected successfully');
+      
+      // Start automatic payment checker after DB is connected
+      setTimeout(() => {
+        startAutomaticPaymentChecker();
+        console.log('🤖 Automatic payment checker started - will run every 2 minutes');
+      }, 5000); // Wait 5 seconds after server starts
+      
     })
     .catch((error) => {
       console.error('❌ Database connection failed:', error);
