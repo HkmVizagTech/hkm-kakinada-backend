@@ -29,47 +29,35 @@ app.get('/users/webhook-test', (req, res) => {
   });
 });
 
-// Catch all webhook attempts to debug
-app.all('/users/webhook*', (req, res, next) => {
-  console.log(`🕵️ Webhook attempt: ${req.method} ${req.path} at ${new Date().toISOString()}`);
-  console.log('🔍 Headers:', JSON.stringify(req.headers, null, 2));
-  console.log('📦 Body:', JSON.stringify(req.body, null, 2));
-  next();
-});
-
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.get('/', (req, res) => {
-  res.send('Welcome to the home page');
+  res.json({
+    status: 'ok',
+    message: 'HKM Vanabhojan Backend Server',
+    timestamp: new Date().toISOString(),
+    version: '1.0.0'
+  });
 });
 
-// Emergency payment fix endpoint (before other routes)
-app.get('/emergency-payment-fix', async (req, res) => {
-  try {
-    console.log('🚨 Emergency payment fix called at:', new Date().toISOString());
-    const { CandidateController } = require('./src/controllers/Candidate.controller');
-    
-    // Create a mock authenticated request
-    const mockReq = { user: { role: 'admin' } };
-    const mockRes = {
-      json: (data) => {
-        console.log('📊 Emergency fix results:', JSON.stringify(data, null, 2));
-        res.json(data);
-      },
-      status: (code) => ({
-        json: (data) => {
-          console.log(`❌ Emergency fix error (${code}):`, data);
-          res.status(code).json(data);
-        }
-      })
-    };
-    
-    await CandidateController.checkPendingPayments(mockReq, mockRes);
-  } catch (error) {
-    console.error('💥 Emergency payment fix error:', error);
-    res.status(500).json({ error: error.message });
-  }
+// Health check endpoint for Cloud Run
+app.get('/health', (req, res) => {
+  res.status(200).json({
+    status: 'healthy',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Simple health check and emergency status endpoint
+app.get('/emergency-payment-fix', (req, res) => {
+  console.log('🚨 Emergency payment fix endpoint called at:', new Date().toISOString());
+  res.json({ 
+    status: 'ok', 
+    message: 'Emergency endpoint is working. Use /users/check-pending-payments with proper auth for payment fixes.',
+    timestamp: new Date().toISOString(),
+    server: 'production'
+  });
 });
 
 app.use("/users", CandidateRouter);
@@ -77,11 +65,38 @@ app.use("/admin/users", userRouter)
 
 
 const PORT = process.env.PORT || 3300;
-app.listen(PORT,'0.0.0.0', async () => {
-  try {
-    await Connection();
-    console.log(`Server connected on port ${PORT}`);
-  } catch (error) {
-    console.error('Database connection failed:', error);
+
+// Add error handling for uncaught exceptions
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error);
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  process.exit(1);
+});
+
+// Start server with better error handling
+const server = app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Server starting on port ${PORT}`);
+  console.log(`📅 Server started at: ${new Date().toISOString()}`);
+  
+  // Connect to database after server starts
+  Connection()
+    .then(() => {
+      console.log('✅ Database connected successfully');
+    })
+    .catch((error) => {
+      console.error('❌ Database connection failed:', error);
+      // Don't exit on DB error, let the server continue
+    });
+});
+
+server.on('error', (error) => {
+  console.error('❌ Server error:', error);
+  if (error.code === 'EADDRINUSE') {
+    console.error(`Port ${PORT} is already in use`);
   }
+  process.exit(1);
 });
