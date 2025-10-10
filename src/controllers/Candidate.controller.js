@@ -387,6 +387,52 @@ const CandidateController = {
         console.error("❌ Webhook processing error for failed payment:", err);
         return res.status(500).json({ status: "error", message: err.message });
       }
+    } else if (event === "refund.processed") {
+      console.log("💰 Processing refund.processed event");
+      const refund = req.body.payload.refund.entity;
+      const paymentId = refund.payment_id;
+
+      try {
+        const candidate = await Candidate.findOne({ paymentId: paymentId });
+        if (candidate) {
+          candidate.refundStatus = 'processed';
+          candidate.refundDate = new Date();
+          candidate.refundAmount = refund.amount / 100; // Convert from paise
+          candidate.updatedAt = new Date();
+          await candidate.save();
+
+          console.log(`💰 Refund processed for ${candidate.name}: ₹${candidate.refundAmount}`);
+          return res.json({ status: "success", message: "Refund processed" });
+        } else {
+          console.log("💰 No candidate found for refund payment ID:", paymentId);
+          return res.json({ status: "ignored", message: "Candidate not found" });
+        }
+      } catch (err) {
+        console.error("❌ Webhook processing error for refund:", err);
+        return res.status(500).json({ status: "error", message: err.message });
+      }
+    } else if (event === "refund.failed") {
+      console.log("❌ Processing refund.failed event");
+      const refund = req.body.payload.refund.entity;
+      const paymentId = refund.payment_id;
+
+      try {
+        const candidate = await Candidate.findOne({ paymentId: paymentId });
+        if (candidate) {
+          candidate.refundStatus = 'failed';
+          candidate.updatedAt = new Date();
+          await candidate.save();
+
+          console.log(`❌ Refund failed for ${candidate.name}`);
+          return res.json({ status: "success", message: "Refund failed status updated" });
+        } else {
+          console.log("❌ No candidate found for failed refund payment ID:", paymentId);
+          return res.json({ status: "ignored", message: "Candidate not found" });
+        }
+      } catch (err) {
+        console.error("❌ Webhook processing error for failed refund:", err);
+        return res.status(500).json({ status: "error", message: err.message });
+      }
     } else {
       console.log(" Ignoring event:", event);
       return res.json({ status: "ignored" });
