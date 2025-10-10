@@ -11,15 +11,10 @@ CandidateRouter.get("/eligible-for-certificate", authenticateToken, requireRole(
 CandidateRouter.get("/verify-payment/:id", CandidateController.verifyPaymentId);
 CandidateRouter.get("/check-pending-payments", authenticateToken, requireRole(['admin']), CandidateController.checkPendingPayments);
 CandidateRouter.get("/send", authenticateToken, requireRole(['admin']), CandidateController.sendTemplate);
-
-
 CandidateRouter.get("/certificate-statistics", authenticateToken, requireRole(['admin']), CandidateController.getCertificateStatistics);
 CandidateRouter.get("/certificate-system-health", authenticateToken, requireRole(['admin']), CandidateController.getCertificateSystemHealth);
 CandidateRouter.get("/certificate/:documentId", CandidateController.getCertificateByDocumentId);
-
-
 CandidateRouter.get('/', authenticateToken, requireRole(['admin']), CandidateController.getAllCandidates);           
-
 
 CandidateRouter.post('/send-certificates', authenticateToken, requireRole(['admin']), CandidateController.sendCertificates);
 CandidateRouter.post('/send-single-certificate', authenticateToken, requireRole(['admin']), CandidateController.sendSingleCertificate);
@@ -32,12 +27,11 @@ CandidateRouter.post("/mark-attendance", CandidateController.markAttendance);
 CandidateRouter.post('/admin/attendance-scan', authenticateToken, requireRole(['admin', 'user']), CandidateController.adminAttendanceScan);
 CandidateRouter.post('/generate-single-certificate', authenticateToken, requireRole(['admin']), CandidateController.generateSingleCertificateOnly);
 
-
 CandidateRouter.put('/:id', authenticateToken, requireRole(['admin']), CandidateController.updateCandidate);     
 CandidateRouter.delete('/asm', authenticateToken, requireRole(['admin']), CandidateController.deleteByName);
 CandidateRouter.delete('/:id', authenticateToken, requireRole(['admin']), CandidateController.deleteCandidate);     
 
-
+// This should be last as it has the most generic pattern
 CandidateRouter.get('/:id', CandidateController.getCandidateById);   
 
 module.exports = { CandidateRouter };

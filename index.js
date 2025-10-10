@@ -29,6 +29,34 @@ app.get('/users/webhook-test', (req, res) => {
   });
 });
 
+// Emergency payment fix endpoint (no auth required for immediate fixing)
+app.get('/users/emergency-payment-fix', async (req, res) => {
+  try {
+    console.log('🚨 Emergency payment fix called at:', new Date().toISOString());
+    const { CandidateController } = require('./src/controllers/Candidate.controller');
+    
+    // Create a mock authenticated request
+    const mockReq = { user: { role: 'admin' } };
+    const mockRes = {
+      json: (data) => {
+        console.log('📊 Emergency fix results:', JSON.stringify(data, null, 2));
+        res.json(data);
+      },
+      status: (code) => ({
+        json: (data) => {
+          console.log(`❌ Emergency fix error (${code}):`, data);
+          res.status(code).json(data);
+        }
+      })
+    };
+    
+    await CandidateController.checkPendingPayments(mockReq, mockRes);
+  } catch (error) {
+    console.error('💥 Emergency payment fix error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Catch all webhook attempts to debug
 app.all('/users/webhook*', (req, res, next) => {
   console.log(`🕵️ Webhook attempt: ${req.method} ${req.path} at ${new Date().toISOString()}`);
