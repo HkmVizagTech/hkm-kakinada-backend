@@ -29,6 +29,14 @@ app.get('/users/webhook-test', (req, res) => {
   });
 });
 
+// Catch all webhook attempts to debug
+app.all('/users/webhook*', (req, res, next) => {
+  console.log(`🕵️ Webhook attempt: ${req.method} ${req.path} at ${new Date().toISOString()}`);
+  console.log('🔍 Headers:', JSON.stringify(req.headers, null, 2));
+  console.log('📦 Body:', JSON.stringify(req.body, null, 2));
+  next();
+});
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

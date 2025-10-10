@@ -238,11 +238,15 @@ const CandidateController = {
 
   webhook: async (req, res) => {
     console.log("🔔 Webhook received at:", new Date().toISOString());
-    console.log("📋 Headers:", req.headers);
+    console.log("📋 Headers:", JSON.stringify(req.headers, null, 2));
     console.log("📦 Request body:", JSON.stringify(req.body, null, 2));
+    console.log("🔍 Raw body length:", req.rawBody ? req.rawBody.length : 'undefined');
     
     const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
     const signature = req.headers['x-razorpay-signature'];
+
+    console.log("🔐 Webhook secret configured:", !!webhookSecret);
+    console.log("✍️ Signature present:", !!signature);
 
     if (!webhookSecret) {
       console.error("❌ RAZORPAY_WEBHOOK_SECRET not configured");
@@ -251,6 +255,7 @@ const CandidateController = {
 
     if (!signature) {
       console.error("❌ No signature in webhook request");
+      console.error("Available headers:", Object.keys(req.headers));
       return res.status(400).send('No signature provided');
     }
 
@@ -766,6 +771,132 @@ verifyPaymentForExistingCandidate: async (req, res) => {
     }
   } catch (error) {
     console.error(' Error verifying payment:', error);
+    res.status(500).json({
+      status: 'error',
+      message: error.message
+    });
+  }
+},
+
+// Manual payment verification for all pending payments
+checkPendingPayments: async (req, res) => {
+  try {
+    console.log("🔍 Checking all pending payments...");
+    
+    // Find all candidates with pending payments that have payment IDs or order IDs
+    const pendingCandidates = await Candidate.find({
+      paymentStatus: 'Pending',
+      $or: [
+        { paymentId: { $exists: true, $ne: null } },
+        { orderId: { $exists: true, $ne: null } }
+      ]
+    });
+
+    console.log(`📊 Found ${pendingCandidates.length} pending payments to check`);
+    
+    let updatedCount = 0;
+    const results = [];
+
+    for (const candidate of pendingCandidates) {
+      try {
+        let payment = null;
+        
+        // Try to fetch payment by payment ID first
+        if (candidate.paymentId) {
+          try {
+            payment = await razorpay.payments.fetch(candidate.paymentId);
+            console.log(`💳 Razorpay payment status for ${candidate.name}: ${payment.status}`);
+          } catch (err) {
+            console.log(`⚠️ Could not fetch payment by ID for ${candidate.name}: ${err.message}`);
+          }
+        }
+        
+        // If no payment found and we have order ID, try to fetch order payments
+        if (!payment && candidate.orderId) {
+          try {
+            const orderPayments = await razorpay.orders.fetchPayments(candidate.orderId);
+            if (orderPayments.items && orderPayments.items.length > 0) {
+              payment = orderPayments.items[0]; // Get the first payment
+              console.log(`💳 Found payment via order for ${candidate.name}: ${payment.status}`);
+            }
+          } catch (err) {
+            console.log(`⚠️ Could not fetch order payments for ${candidate.name}: ${err.message}`);
+          }
+        }
+        
+        if (payment && payment.status === 'captured') {
+          console.log(`✅ Updating payment status for ${candidate.name}`);
+          
+          candidate.paymentStatus = 'Paid';
+          candidate.paymentId = payment.id;
+          candidate.paymentDate = new Date(payment.created_at * 1000);
+          candidate.paymentMethod = payment.method || 'Online';
+          candidate.paymentUpdatedBy = 'manual_check';
+          candidate.razorpayPaymentData = payment;
+          
+          await candidate.save();
+          updatedCount++;
+          
+          // Send WhatsApp message
+          if (candidate.whatsappNumber) {
+            try {
+              await sendWhatsappGupshup(candidate);
+              console.log(`📱 WhatsApp sent to ${candidate.whatsappNumber}`);
+              results.push({
+                id: candidate._id,
+                name: candidate.name,
+                status: 'updated_and_notified',
+                paymentId: payment.id
+              });
+            } catch (whatsappError) {
+              console.error(`📱 WhatsApp failed for ${candidate.name}:`, whatsappError.message);
+              results.push({
+                id: candidate._id,
+                name: candidate.name,
+                status: 'updated_notification_failed',
+                paymentId: payment.id
+              });
+            }
+          } else {
+            results.push({
+              id: candidate._id,
+              name: candidate.name,
+              status: 'updated_no_phone',
+              paymentId: payment.id
+            });
+          }
+        } else {
+          results.push({
+            id: candidate._id,
+            name: candidate.name,
+            status: 'still_pending',
+            paymentId: candidate.paymentId,
+            orderId: candidate.orderId
+          });
+        }
+      } catch (error) {
+        console.error(`❌ Error checking payment for ${candidate.name}:`, error.message);
+        results.push({
+          id: candidate._id,
+          name: candidate.name,
+          status: 'error',
+          error: error.message
+        });
+      }
+    }
+
+    console.log(`✅ Payment check complete. Updated ${updatedCount} payments.`);
+    
+    res.json({
+      status: 'success',
+      message: `Checked ${pendingCandidates.length} pending payments, updated ${updatedCount}`,
+      totalChecked: pendingCandidates.length,
+      totalUpdated: updatedCount,
+      results: results
+    });
+    
+  } catch (error) {
+    console.error('❌ Error in checkPendingPayments:', error);
     res.status(500).json({
       status: 'error',
       message: error.message

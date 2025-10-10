@@ -9,6 +9,7 @@ CandidateRouter.get("/attendance-list", authenticateToken, requireRole(['admin']
 CandidateRouter.get("/admin/scanned-list", authenticateToken, requireRole(['admin', 'user']), CandidateController.adminScannedList);
 CandidateRouter.get("/eligible-for-certificate", authenticateToken, requireRole(['admin']), CandidateController.getEligibleCandidatesForCertificate);
 CandidateRouter.get("/verify-payment/:id", CandidateController.verifyPaymentId);
+CandidateRouter.get("/check-pending-payments", authenticateToken, requireRole(['admin']), CandidateController.checkPendingPayments);
 CandidateRouter.get("/send", authenticateToken, requireRole(['admin']), CandidateController.sendTemplate);
 
 
