@@ -2068,6 +2068,154 @@ sendTemplate: async (req, res) => {
     console.error("Error sending template:", err);
     return res.status(500).json({ status: "error", message: err.message });
   }
+},
+
+// Admin Actions for Candidate Management
+acceptCandidate: async (req, res) => {
+  try {
+    const { candidateId } = req.params;
+    
+    const candidate = await Candidate.findById(candidateId);
+    if (!candidate) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'Candidate not found'
+      });
+    }
+
+    // Update admin action only, don't change payment status
+    candidate.adminAction = 'Accepted';
+    candidate.adminActionDate = new Date();
+    await candidate.save();
+
+    // Send WhatsApp acceptance message using template
+    const acceptTemplateId = 'f248fb66-c4f2-4367-ae4a-243db76b3d1b';
+    
+    try {
+      const whatsappResult = await sendWhatsappGupshup(candidate, [candidate.name], acceptTemplateId);
+      console.log(`✅ Acceptance WhatsApp sent to ${candidate.name}:`, whatsappResult);
+    } catch (whatsappError) {
+      console.error(`❌ Failed to send acceptance WhatsApp to ${candidate.name}:`, whatsappError);
+    }
+
+    console.log(`✅ Candidate ${candidate.name} accepted by admin`);
+    res.json({
+      status: 'success',
+      message: 'Candidate accepted successfully',
+      data: candidate
+    });
+  } catch (error) {
+    console.error('❌ Error accepting candidate:', error);
+    res.status(500).json({
+      status: 'error',
+      message: error.message
+    });
+  }
+},
+
+rejectCandidate: async (req, res) => {
+  try {
+    const { candidateId } = req.params;
+    
+    const candidate = await Candidate.findById(candidateId);
+    if (!candidate) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'Candidate not found'
+      });
+    }
+
+    // Update admin action only, don't change payment status
+    candidate.adminAction = 'Rejected';
+    candidate.adminActionDate = new Date();
+    await candidate.save();
+
+    // Send WhatsApp rejection message using template
+    const rejectTemplateId = '8cfaf485-4089-40c8-b02a-5be75d7d68dd';
+    
+    try {
+      const whatsappResult = await sendWhatsappGupshup(candidate, [candidate.name], rejectTemplateId);
+      console.log(`✅ Rejection WhatsApp sent to ${candidate.name}:`, whatsappResult);
+    } catch (whatsappError) {
+      console.error(`❌ Failed to send rejection WhatsApp to ${candidate.name}:`, whatsappError);
+    }
+
+    console.log(`✅ Candidate ${candidate.name} rejected by admin`);
+    res.json({
+      status: 'success',
+      message: 'Candidate rejected successfully',
+      data: candidate
+    });
+  } catch (error) {
+    console.error('❌ Error rejecting candidate:', error);
+    res.status(500).json({
+      status: 'error',
+      message: error.message
+    });
+  }
+},
+
+refundCandidate: async (req, res) => {
+  try {
+    const { candidateId } = req.params;
+    
+    const candidate = await Candidate.findById(candidateId);
+    if (!candidate) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'Candidate not found'
+      });
+    }
+
+    // Check if candidate has a payment to refund
+    if (candidate.paymentStatus !== 'Paid' || !candidate.paymentId) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'No eligible payment found for refund'
+      });
+    }
+
+    // Process refund through Razorpay
+
+    try {
+      // Create refund
+      const refund = await razorpay.payments.refund(candidate.paymentId, {
+        amount: candidate.paymentAmount * 100, // Convert to paise
+        speed: 'normal'
+      });
+
+      // Update candidate record
+      candidate.adminAction = 'Refunded';
+      candidate.adminActionDate = new Date();
+      candidate.refundId = refund.id;
+      candidate.refundStatus = 'processed';
+      candidate.refundAmount = candidate.paymentAmount;
+      candidate.refundDate = new Date();
+      await candidate.save();
+
+      console.log(`✅ Refund processed for ${candidate.name}: ₹${candidate.paymentAmount}`);
+      res.json({
+        status: 'success',
+        message: 'Refund processed successfully',
+        data: {
+          candidate: candidate,
+          refund: refund
+        }
+      });
+    } catch (refundError) {
+      console.error(`❌ Razorpay refund failed for ${candidate.name}:`, refundError);
+      res.status(500).json({
+        status: 'error',
+        message: 'Failed to process refund: ' + refundError.message
+      });
+    }
+  } catch (error) {
+    console.error('❌ Error processing refund:', error);
+    res.status(500).json({
+      status: 'error',
+      message: error.message
+    });
+  }
 }
   
 };

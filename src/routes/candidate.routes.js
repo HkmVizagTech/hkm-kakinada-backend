@@ -27,6 +27,11 @@ CandidateRouter.post("/mark-attendance", CandidateController.markAttendance);
 CandidateRouter.post('/admin/attendance-scan', authenticateToken, requireRole(['admin', 'user']), CandidateController.adminAttendanceScan);
 CandidateRouter.post('/generate-single-certificate', authenticateToken, requireRole(['admin']), CandidateController.generateSingleCertificateOnly);
 
+// Admin Action Routes
+CandidateRouter.post('/admin/accept/:candidateId', authenticateToken, requireRole(['admin']), CandidateController.acceptCandidate);
+CandidateRouter.post('/admin/reject/:candidateId', authenticateToken, requireRole(['admin']), CandidateController.rejectCandidate);
+CandidateRouter.post('/admin/refund/:candidateId', authenticateToken, requireRole(['admin']), CandidateController.refundCandidate);
+
 CandidateRouter.put('/:id', authenticateToken, requireRole(['admin']), CandidateController.updateCandidate);     
 CandidateRouter.delete('/asm', authenticateToken, requireRole(['admin']), CandidateController.deleteByName);
 CandidateRouter.delete('/:id', authenticateToken, requireRole(['admin']), CandidateController.deleteCandidate);     

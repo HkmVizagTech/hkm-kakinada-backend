@@ -56,6 +56,12 @@ const candidateSchema = new mongoose.Schema({
   adminAction: { type: String, enum: ['Accepted', 'Rejected', 'Refunded'], default: null },
   adminActionDate: { type: Date },
 
+  // Refund tracking fields
+  refundId: { type: String },
+  refundStatus: { type: String, enum: ['processed', 'pending', 'failed'], default: null },
+  refundAmount: { type: Number },
+  refundDate: { type: Date },
+
   // Student ID Card fields
   studentIdCardUrl: { type: String }, // Cloudinary URL
   studentIdCardPublicId: { type: String }, // Cloudinary public ID for deletion
