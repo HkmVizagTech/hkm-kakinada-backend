@@ -1,6 +1,7 @@
 const express = require('express');
 const { CandidateController } = require('../controllers/Candidate.controller');
 const { authenticateToken, requireRole } = require('../middlewares/auth.middleware');
+const upload = require('../middlewares/upload.middleware');
 const CandidateRouter = express.Router();
 
 
@@ -23,6 +24,7 @@ CandidateRouter.post('/send-certificates', authenticateToken, requireRole(['admi
 CandidateRouter.post('/send-single-certificate', authenticateToken, requireRole(['admin']), CandidateController.sendSingleCertificate);
 CandidateRouter.post('/resend-certificate', authenticateToken, requireRole(['admin']), CandidateController.resendCertificate); 
 CandidateRouter.post('/create-order', CandidateController.createOrder);   
+CandidateRouter.post('/create-order-with-file', upload.single('studentIdCard'), CandidateController.createOrderWithFile);
 CandidateRouter.post('/verify-payment', CandidateController.verifyPayment); 
 CandidateRouter.post('/', CandidateController.createCandidate);           
 CandidateRouter.post("/mark-attendance", CandidateController.markAttendance);

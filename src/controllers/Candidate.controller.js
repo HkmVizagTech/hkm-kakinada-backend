@@ -5,6 +5,7 @@ const sendWhatsappGupshup = require('../utils/sendWhatsappGupshup');
 const { 
   sendCertificateWithCloudinary, generateDocumentId, generateCertificatePDF, testCloudinaryConnection, testWhatsAppConnection
 } = require('../utils/sendCertificateWithTemplate');
+const cloudinary = require('../config/cloudinary');
 const path = require('path');
 const fs = require('fs');
 require('dotenv').config();
@@ -75,6 +76,108 @@ const CandidateController = {
     } catch (err) {
       console.error(" Error creating order and saving candidate:", err);
       console.error(" Error stack:", err.stack);
+      return res.status(500).json({ status: "error", message: err.message });
+    }
+  },
+
+  // New function to handle file uploads with order creation
+  createOrderWithFile: async (req, res) => {
+    console.log("🔵 /users/create-order-with-file route hit");
+    
+    try {
+      const { amount } = req.body;
+      const formData = JSON.parse(req.body.formData || '{}');
+      
+      console.log("📋 Form Data:", formData);
+      console.log("💰 Amount:", amount);
+      console.log("📁 File:", req.file ? req.file.originalname : 'No file');
+      
+      if (!amount) {
+        return res.status(400).json({ status: "error", message: "Amount is required" });
+      }
+      
+      if (!formData) {
+        return res.status(400).json({ status: "error", message: "Form data is required" });
+      }
+      
+      // If student, validate ID card upload
+      if (formData.collegeOrWorking === "College" && !req.file) {
+        return res.status(400).json({ status: "error", message: "Student ID card is required" });
+      }
+      
+      let studentIdCardUrl = null;
+      let studentIdCardPublicId = null;
+      
+      // Upload ID card to Cloudinary if provided
+      if (req.file && formData.collegeOrWorking === "College") {
+        console.log("☁️ Uploading ID card to Cloudinary...");
+        
+        const uploadResult = await new Promise((resolve, reject) => {
+          cloudinary.uploader.upload_stream(
+            {
+              resource_type: 'image',
+              folder: 'student-id-cards',
+              public_id: `student_${Date.now()}`,
+              transformation: [
+                { width: 800, height: 600, crop: 'limit' },
+                { quality: 'auto:good' }
+              ]
+            },
+            (error, result) => {
+              if (error) {
+                console.error("❌ Cloudinary upload error:", error);
+                reject(error);
+              } else {
+                console.log("✅ Cloudinary upload successful:", result.secure_url);
+                resolve(result);
+              }
+            }
+          ).end(req.file.buffer);
+        });
+        
+        studentIdCardUrl = uploadResult.secure_url;
+        studentIdCardPublicId = uploadResult.public_id;
+      }
+      
+      // Create Razorpay order
+      const receipt = `receipt_${Date.now()}`;
+      const options = { amount, currency: "INR", receipt };
+      
+      console.log("💳 Creating Razorpay order with options:", options);
+      const order = await razorpay.orders.create(options);
+      console.log("✅ Razorpay order created:", order.id);
+      
+      const normalizedNumber = "91" + formData.whatsappNumber;
+      
+      // Create candidate with ID card info
+      const candidate = new Candidate({
+        serialNo: formData.serialNo,
+        name: formData.name.trim(),
+        gender: formData.gender,
+        college: formData.college,
+        course: formData.course,
+        year: formData.year,
+        dob: new Date(formData.dob),
+        registrationDate: new Date(),
+        collegeOrWorking: formData.collegeOrWorking,
+        companyName: formData.companyName,
+        whatsappNumber: normalizedNumber,
+        paymentStatus: "Pending",
+        orderId: order.id,
+        paymentAmount: parseFloat(amount) / 100,
+        receipt: receipt,
+        email: formData.email,
+        studentIdCardUrl,
+        studentIdCardPublicId,
+      });
+      
+      console.log("💾 Saving candidate to database...");
+      await candidate.save();
+      console.log("✅ Candidate saved successfully with ID:", candidate._id);
+      
+      return res.json(order);
+    } catch (err) {
+      console.error("❌ Error in createOrderWithFile:", err);
       return res.status(500).json({ status: "error", message: err.message });
     }
   },

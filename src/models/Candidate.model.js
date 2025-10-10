@@ -52,6 +52,10 @@ const candidateSchema = new mongoose.Schema({
 
   paymentUpdatedBy: { type: String, enum: ['manual', 'webhook'], default: 'manual' },
   razorpayPaymentData: { type: mongoose.Schema.Types.Mixed },
+
+  // Student ID Card fields
+  studentIdCardUrl: { type: String }, // Cloudinary URL
+  studentIdCardPublicId: { type: String }, // Cloudinary public ID for deletion
 }, { timestamps: true });
 
 const Candidate = mongoose.model('Candidate', candidateSchema);
