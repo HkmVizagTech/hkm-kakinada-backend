@@ -223,10 +223,20 @@ const CandidateController = {
       await candidate.save();
 
       if (!candidate.whatsappNumber) {
-        console.error("Cannot send WhatsApp: candidate.whatsappNumber is missing for", candidate._id);
-      } else {
-        await sendWhatsappGupshup(candidate);
-      }
+    console.error(`Cannot send WhatsApp: candidate.whatsappNumber is missing for ${candidate._id}`);
+} else {
+    try {
+        const templateId = candidate.collegeOrWorking === 'College' 
+            ? "66ab1b5c-f2df-4fd7-b8dc-1ea139a1f35e" 
+            : "62641f1e-aad7-4c96-933d-b0de01d2ee4c";
+        console.log(` Sending WhatsApp using template ${templateId} to ${candidate.whatsappNumber}`);
+        await sendWhatsappGupshup(candidate, [candidate.name], templateId);
+        console.log(`WhatsApp sent successfully to ${candidate._id}`);
+    } catch (error) {
+        console.error(`Failed to send WhatsApp to ${candidate._id}:`, error);
+    }
+}
+
 
       return res.json({ message: "success", candidate });
 
@@ -318,16 +328,19 @@ const CandidateController = {
           });
 
         
-          if (!candidate.whatsappNumber) {
-            console.error(" Cannot send WhatsApp: whatsappNumber is missing for", candidate._id);
-          } else {
-            try {
-              await sendWhatsappGupshup(candidate);
-              console.log(" WhatsApp message sent successfully to:", candidate.whatsappNumber);
-            } catch (whatsappError) {
-              console.error(" WhatsApp sending failed:", whatsappError.message);
-            }
-          }
+          // if (!candidate.whatsappNumber) {
+          //   console.error(" Cannot send WhatsApp: whatsappNumber is missing for", candidate._id);
+          // } else {
+          //   try {
+      
+          //   console.log(` Sending WhatsApp using template hellonm ${templateId} to ${candidate.whatsappNumber}`);
+          //     await sendWhatsappGupshup(candidate,[candidate.name], templateId);
+
+          //     console.log(" WhatsApp message sent successfully to:", candidate.whatsappNumber);
+          //   } catch (whatsappError) {
+          //     console.error(" WhatsApp sending failed:", whatsappError.message);
+          //   }
+          // }
         } else {
           console.log(" Payment already processed for:", candidate.name, "- Status:", candidate.paymentStatus);
         }
@@ -2135,7 +2148,7 @@ acceptCandidate: async (req, res) => {
     await candidate.save();
 
     // Send WhatsApp acceptance message using template
-    const acceptTemplateId = 'f248fb66-c4f2-4367-ae4a-243db76b3d1b';
+    const acceptTemplateId = candidate.gender==='Male'?'4406a55e-cecd-4470-85bc-af1669bae7c5':'50efca60-006f-46aa-8546-319c02eea04c';
     
     console.log(`📱 Attempting to send acceptance WhatsApp to ${candidate.name} (${candidate.whatsappNumber})`);
     console.log(`📋 Using template ID: ${acceptTemplateId}`);
@@ -2176,7 +2189,7 @@ rejectCandidate: async (req, res) => {
     await candidate.save();
 
     // Send WhatsApp rejection message using template
-    const rejectTemplateId = '8cfaf485-4089-40c8-b02a-5be75d7d68dd';
+    const rejectTemplateId = '0136b065-b9d0-48cc-b4b3-3b0b912cef53';
     
     console.log(`📱 Attempting to send rejection WhatsApp to ${candidate.name} (${candidate.whatsappNumber})`);
     console.log(`📋 Using template ID: ${rejectTemplateId}`);

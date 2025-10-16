@@ -258,13 +258,13 @@ async function sendWhatsappGupshup(candidate, templateParams = [candidate.name],
       // Determine template ID
       let templateId = templateIdOverride;
       if (!templateId) {
-        switch ((candidate.gender || '').trim().toLowerCase()) {
-          case 'male': 
-            templateId = 'f248fb66-c4f2-4367-ae4a-243db76b3d1b'; 
+        switch ((candidate.collegeOrWorking || '').trim().toLowerCase()) {
+          case 'college': 
+            templateId = '66ab1b5c-f2df-4fd7-b8dc-1ea139a1f35e'; 
             console.log('🚹 Using male template');
             break;
-          case 'female': 
-            templateId = '8cfaf485-4089-40c8-b02a-5be75d7d68dd'; 
+          case 'working': 
+            templateId = '62641f1e-aad7-4c96-933d-b0de01d2ee4c'; 
             console.log('🚺 Using female template');
             break;
           default: 
