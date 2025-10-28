@@ -2148,7 +2148,7 @@ acceptCandidate: async (req, res) => {
     await candidate.save();
 
     // Send WhatsApp acceptance message using template
-    const acceptTemplateId = candidate.gender==='Male'?'4406a55e-cecd-4470-85bc-af1669bae7c5':'50efca60-006f-46aa-8546-319c02eea04c';
+    const acceptTemplateId = candidate.gender==='Male'?'8155e343-e257-469b-a178-bab5a75a8611':'6cdc799b-a075-40c3-b5ac-f12a6bb11225';
     
     console.log(`📱 Attempting to send acceptance WhatsApp to ${candidate.name} (${candidate.whatsappNumber})`);
     console.log(`📋 Using template ID: ${acceptTemplateId}`);
