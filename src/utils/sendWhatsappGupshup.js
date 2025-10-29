@@ -260,7 +260,7 @@ async function sendWhatsappGupshup(candidate, templateParams = [candidate.name],
       if (!templateId) {
         switch ((candidate.collegeOrWorking || '').trim().toLowerCase()) {
           case 'college': 
-            templateId = '66ab1b5c-f2df-4fd7-b8dc-1ea139a1f35e'; 
+            templateId = 'd7e030c1-b9d1-47f1-873f-4ca8b43262fc'; 
             console.log('🚹 Using male template');
             break;
           case 'working': 
